@@ -1,0 +1,1 @@
+engineers on a normal work day: "Hmm, anyone know how to open a folder? Ugh I'll just google it."  engineers interviewing other engineers: "How is the geodesic distance between quaternions defined and what are the implications for complex rotations in non-euclidean 4-space?"

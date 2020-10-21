@@ -1,0 +1,1 @@
+Professor: What is a root of f(z) of multiplicity k?Student: It is a number a such that if you plug it into f, you get 0; if you plug it in again, you again get 0, and so k times. But if you plug it into f for the k+1-st time, you do not get 0
