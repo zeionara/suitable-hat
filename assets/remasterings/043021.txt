@@ -1,0 +1,1 @@
+beginWriteln('Hello World');end.// HELLO WORLD НА ПАСКАЛЕ БЕЗ СМС И РЕГИСТРАЦИИ

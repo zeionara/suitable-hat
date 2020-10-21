@@ -19,7 +19,7 @@ def main(min_length: int = 25, delay=1, cache_path='aneks.pkl'):
     while True:
         response = urlopen(
             Request(
-                url=f'https://vk.com/wall-85443458?own=1&offset={offset}',
+                url=f'https://vk.com/wall-149279263?own=1&offset={offset}',
                 headers={
                     'authority': 'vk.com',
                     'cache-control': 'max-age=0',
@@ -35,10 +35,17 @@ def main(min_length: int = 25, delay=1, cache_path='aneks.pkl'):
             )
         ).read().decode(encoding='windows-1251').replace('Expand text…', ' ')
         soup = BeautifulSoup(response, features="html.parser")
+        # print(soup.prettify())
         all_aneks = tuple(
             map(
                 lambda post: post.text,
-                soup.find_all('div', {'class': 'wall_post_text'})
+                soup.find_all('div', {'class': 'wall_text'})
+            )
+        )
+        all_remastered_aneks = tuple(
+            map(
+                lambda post: post.text,
+                soup.find_all('div', {'class': 'wall_reply_text'})
             )
         )
         if len(all_aneks) == 0:
@@ -46,7 +53,7 @@ def main(min_length: int = 25, delay=1, cache_path='aneks.pkl'):
         offset += len(all_aneks)
         for anek in filter(
                 lambda anek: len(anek) >= min_length,
-                all_aneks
+                all_remastered_aneks
         ):
             aneks.add(anek)
             print(anek)
