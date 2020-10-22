@@ -94,7 +94,7 @@ def audio_extract(input_text='',args=None):
     print(type(args.output))
     #download chunks and write them to the output file
     for idx, val in enumerate(combined_text):
-        val = val.replace('"', "'").replace('~', 'тильда')
+        val = val.replace('"', "'").replace('~', 'тильда').replace('/', '').replace('\\', '')
         mp3url = "https://cloud.speechpro.com/api/tts/synthesize/demo"
         print(mp3url)
         headers = {

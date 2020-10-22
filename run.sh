@@ -1,4 +1,4 @@
-for file in data/*; do
+for file in google-data/*; do
 	export audio_path=audios/$(echo $file | cut -d '/' -f2).mp3
 	export converted_audio_path=converted-audios/$(echo $file | cut -d '/' -f2).m4a
 	python main.py -f $file -o $audio_path
