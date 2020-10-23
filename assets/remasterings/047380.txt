@@ -1,0 +1,1 @@
+For (int i = 0; i =4) doif read(Muller)=trueprint('Хрен тебе!')then i++}print('Кольцевая!')

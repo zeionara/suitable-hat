@@ -1,0 +1,1 @@
+заходит мужик в папку C:\users\user\documents\GTA San Andreas User files\gallery, а у него такой папки нет, потому что он не 'user'

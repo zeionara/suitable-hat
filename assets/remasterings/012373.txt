@@ -1,0 +1,1 @@
+#include <iostream>using namespace stdint main(){ cout « "Ты пидор"; return 0;}
