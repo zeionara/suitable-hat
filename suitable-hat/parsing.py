@@ -1,6 +1,7 @@
 import pickle
 from os import listdir
 from os.path import isfile, join
+from typing import Tuple
 from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
@@ -29,7 +30,7 @@ def _update_cache(aneks: set, cache_path: str):
     print('Cache was updated successfully')
 
 
-def _get_posts(community_id: int, offset: int, class_name: str = 'wall_post_text'):
+def _get_posts(community_id: int, offset: int, class_names: Tuple[str] = ('wall_post_text',)):
     response = _post_process_response(
         urlopen(
             Request(
@@ -39,21 +40,29 @@ def _get_posts(community_id: int, offset: int, class_name: str = 'wall_post_text
         ).read().decode(encoding='windows-1251')
     )
     soup = BeautifulSoup(response, features="html.parser")
-    for post in soup.find_all('div', {'class': class_name}):
-        yield post.text
+    return map(
+        lambda class_name: map(
+            lambda post: post.text,
+            soup.find_all('div', {'class': class_name})
+        ),
+        class_names
+    )
 
 
-def parse(community_id: int = 85443458, min_length: int = 25, cache_delay: int = 100, cache_path='aneks.pkl'):
+def parse(community_id: int = 85443458, min_length: int = 25, cache_delay: int = 100, cache_path='aneks.pkl', remasterings: bool = False):
     aneks = set()
     offset = 0
     while True:
-        all_aneks = tuple(_get_posts(community_id, offset))
+        if remasterings:
+            all_aneks, all_remasterings = map(tuple, _get_posts(community_id, offset, class_names=('wall_post_text', 'wall_reply_text')))
+        else:
+            all_aneks = tuple(next(_get_posts(community_id, offset)))
         if len(all_aneks) == 0:
             break
         offset += len(all_aneks)
         for anek in filter(
                 lambda anek: len(anek) >= min_length,
-                all_aneks
+                all_remasterings if remasterings else all_aneks
         ):
             aneks.add(anek)
         if (offset // cache_delay - (offset - len(all_aneks)) // cache_delay) > 0:
