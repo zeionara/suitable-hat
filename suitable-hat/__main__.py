@@ -13,11 +13,12 @@ def main():
 @main.command()
 @click.option('--community-id', type=int, default=85443458)
 @click.option('--min-length', type=int, default=25)
+@click.option('--offset', type=int, default=0)
 @click.option('--cache-delay', type=int, default=100)
 @click.option('--cache-path', type=str, default='aneks.pkl')
 @click.option('--remasterings', '-r', is_flag=True)
-def load(community_id: int = 85443458, min_length: int = 25, cache_delay: int = 100, cache_path='aneks.pkl', remasterings: bool = False):
-    parse(community_id=community_id, min_length=min_length, cache_delay=cache_delay, cache_path=cache_path, remasterings=remasterings)
+def load(community_id: int = 85443458, min_length: int = 25, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl', remasterings: bool = False):
+    parse(community_id=community_id, min_length=min_length, cache_delay=cache_delay, cache_path=cache_path, remasterings=remasterings, offset=offset)
 
 
 @main.command()

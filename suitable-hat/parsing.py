@@ -6,6 +6,7 @@ from os import listdir
 from os.path import isfile, join
 from time import sleep
 from typing import List
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup
@@ -20,8 +21,8 @@ HEADERS = {
     'sec-fetch-mode': 'navigate',
     'sec-fetch-user': '?1',
     'sec-fetch-dest': 'document',
-    'accept-language': 'en-US,en;q=0.9,ru-RU;q=0.8,ru;q=0.7',
-    'cookie': os.environ['COOKIE']
+    'accept-language': 'en-US,en;q=0.9,ru-RU;q=0.8,ru;q=0.7'
+    # 'cookie': os.environ['COOKIE']
 }
 
 payload_regexp = re.compile('"<.+>"')
@@ -249,21 +250,26 @@ def _get_posts(community_id: int, offset: int):
     }
 
 
-def parse(community_id: int = 85443458, min_length: int = 25, cache_delay: int = 100, cache_path='aneks.pkl', remasterings: bool = False):
+def parse(community_id: int = 85443458, min_length: int = 25, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl', remasterings: bool = False):
     aneks = {'aneks': [], 'users': set()}
     anek_texts = set()
-    offset = 0
+    # offset = 0
     # id = get_id('/markysha_markysha')
     # print('id')
     # friends = get_friends(id)
     # communities = get_communities(id)
     while True:
-        aneks_ = _get_posts(community_id, offset)
+        print(f'Offset = {offset}')
+        try:
+            aneks_ = _get_posts(community_id, offset)
+        except HTTPError as e:
+            _update_cache(aneks, cache_path)
+            raise e
         if len(aneks_['aneks']) == 0:
             break
         offset += len(aneks_['aneks'])
         for anek in filter(
-                lambda anek_: anek_['text'] is not None and len(anek_['text']) >= min_length, aneks_['aneks']
+                lambda anek_: anek_['text'] is not None, aneks_['aneks']  # and len(anek_['text']) >= min_length, aneks_['aneks']
         ):
             if anek['text'] not in anek_texts:
                 anek_texts.add(anek['text'])
@@ -271,6 +277,7 @@ def parse(community_id: int = 85443458, min_length: int = 25, cache_delay: int =
         aneks['users'] = aneks_['users'].union(aneks['users'])
         if (offset // cache_delay - (offset - len(aneks_['aneks'])) // cache_delay) > 0:
             _update_cache(aneks, cache_path)
+        print(aneks_)
         print(f'Handled {offset} (+{len(aneks_["aneks"])}) aneks')
     _update_cache(aneks, cache_path)
 
