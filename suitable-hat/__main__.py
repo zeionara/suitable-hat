@@ -23,8 +23,8 @@ def load(community_id: int = 85443458, min_length: int = 25, offset: int = 0, ca
 
 @main.command()
 @click.option('--cache-dir', type=str, default='cache')
-@click.option('--file-path', type=str, default='aneks.txt')
-def join(cache_dir: str = 'cache', file_path: str = 'aneks.txt'):
+@click.option('--file-path', type=str, default='aneks.yml')
+def join(cache_dir: str = 'cache', file_path: str = 'aneks.yml'):
     merge(cache_dir, file_path)
 
 

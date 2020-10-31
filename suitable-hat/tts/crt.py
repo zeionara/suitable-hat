@@ -35,6 +35,7 @@ def generate_audio(input_file_path: str, output_file_path: str, voice_name: str 
         for idx, val in enumerate(combined_text):
             val = val.replace('"', "'").replace('~', 'тильда').replace('/', '').replace('\\', '').replace('\t', ' ').replace('\n', ' ')
             mp3url = "https://cloud.speechpro.com/api/tts/synthesize/demo"
+            print(mp3url)
             body = f'{{"voice_name":"{voice_name}","text_value":"{val}"}}'
             req = Request(mp3url, body.encode(), HEADERS)
             if len(val) > 0:
