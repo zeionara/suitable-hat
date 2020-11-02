@@ -3,7 +3,7 @@ import click
 from .parsing import parse, merge
 from .tts.crt import generate_audio as generate_audio_with_crt
 from .tts.google import generate_audio as generate_audio_with_google
-
+from .converters import to_triples as to_triples_
 
 @click.group()
 def main():
@@ -42,6 +42,13 @@ def tts(engine: str = 'crt', input_file: str = 'text.txt', output_file: str = 'a
         generate_audio_with_google(input_file_path=input_file, output_file_path=output_file, after_chunk_delay=after_chunk_delay, after_file_delay=after_file_delay, max_n_chars=max_n_chars)
     else:
         raise ValueError(f'Unknown engined identifier {engine}')
+
+
+@main.command()
+@click.option('--input-file', type=str, default='assets/baneks.pkl')
+@click.option('--output-file', type=str, default='assets/triples.txt')
+def to_triples(input_file: str = 'assets/baneks.pkl', output_file: str = 'assets/triples.txt'):
+    to_triples_(input_file=input_file, output_file=output_file)
 
 
 if __name__ == "__main__":
