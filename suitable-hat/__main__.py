@@ -1,7 +1,7 @@
 import click
 
 from .converters import to_triples as to_triples_, users_to_triples as users_to_triples_
-from .parsing import parse, merge, load_users as load_users_
+from .parsers import parse, merge, load_users as load_users_
 from .tts.crt import generate_audio as generate_audio_with_crt
 from .tts.google import generate_audio as generate_audio_with_google
 
@@ -13,13 +13,11 @@ def main():
 
 @main.command()
 @click.option('--community-id', type=int, default=85443458)
-@click.option('--min-length', type=int, default=25)
 @click.option('--offset', type=int, default=0)
 @click.option('--cache-delay', type=int, default=100)
 @click.option('--cache-path', type=str, default='aneks.pkl')
-@click.option('--remasterings', '-r', is_flag=True)
-def load(community_id: int = 85443458, min_length: int = 25, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl', remasterings: bool = False):
-    parse(community_id=community_id, min_length=min_length, cache_delay=cache_delay, cache_path=cache_path, remasterings=remasterings, offset=offset)
+def load(community_id: int = 85443458, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl'):
+    parse(community_id=community_id, cache_delay=cache_delay, cache_path=cache_path, offset=offset)
 
 
 @main.command()
@@ -46,10 +44,17 @@ def tts(engine: str = 'crt', input_file: str = 'text.txt', output_file: str = 'a
 
 
 @main.command()
-@click.option('--cache-path', type=str, default='assets/baneks.pkl')
-@click.option('--file-path', type=str, default='assets/users.pkl')
-def load_users(cache_path: str = 'assets/baneks.pkl', file_path: str = 'assets/users.pkl'):
-    load_users_(cache_path, file_path)
+@click.option('--input-file', type=str, default='assets/baneks.pkl')
+@click.option('--output-dir', type=str, default='assets/users'
+                                                ''
+                                                '')
+@click.option('--should-test', is_flag=True)
+@click.option('--reverse', is_flag=True)
+@click.option('--chunk-size', type=int, default=200)
+@click.option('--n-workers', type=int, default=5)
+def load_users(input_file: str = 'assets/baneks.pkl', output_dir: str = 'assets/users', should_test: bool = False, chunk_size: int = 200, reverse: bool = False, n_workers: int = 5):
+    load_users_(input_file, should_test=should_test, output_dir=output_dir, chunk_size=chunk_size, reverse=reverse, n_workers=n_workers)
+
 
 @main.command()
 @click.option('--input-file', type=str, default='assets/baneks.pkl')
