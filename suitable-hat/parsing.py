@@ -1,4 +1,5 @@
 import os
+import yaml
 import pickle
 import re
 from itertools import chain
@@ -100,14 +101,19 @@ def get_post_id(content):
 
 
 def query(url: str):
-    return _post_process_response(
-        urlopen(
-            Request(
-                url=url,
-                headers=HEADERS
+    while True:
+        try:
+            return _post_process_response(
+                urlopen(
+                    Request(
+                        url=url,
+                        headers=HEADERS
+                    )
+                ).read().decode(encoding='windows-1251')
             )
-        ).read().decode(encoding='windows-1251')
-    )
+        except HTTPError:
+            print(f"Error querying url {url}. Trying again...")
+            sleep(2)
 
 
 def read_all(items: List, query: callable, parse_: callable):
@@ -282,8 +288,9 @@ def parse(community_id: int = 85443458, min_length: int = 25, offset: int = 0, c
     _update_cache(aneks, cache_path)
 
 
-def merge(dir_path: str = 'caches', file_path: str = 'aneks.txt'):
-    aneks = set()
+def merge(dir_path: str = 'caches', file_path: str = 'aneks.yml'):
+    aneks = {'aneks': [], 'users': set()}
+    anek_texts = set()
     for file in filter(
             lambda file_path_: isfile(file_path_),
             map(
@@ -292,6 +299,18 @@ def merge(dir_path: str = 'caches', file_path: str = 'aneks.txt'):
             )
     ):
         with open(file, 'rb') as f:
-            aneks = aneks.union(pickle.load(f))
+            # aneks = aneks.union(pickle.load(f))
+            aneks_ = pickle.load(f)
+        for anek in aneks_['aneks']:
+            if anek['text'] not in anek_texts:
+                anek_texts.add(anek['text'])
+                anek['remasterings'] = list(anek['remasterings'])
+                aneks['aneks'].append(anek)
+        aneks['users'] = aneks_['users'].union(aneks['users'])
+
+    aneks['users'] = list(aneks['users'])
+
+    _update_cache(aneks, f"{file_path.split('.', 1)[0]}.pkl")
+
     with open(file_path, 'w') as f:
-        f.writelines(map(lambda anek: anek + '\n', aneks))
+        yaml.dump(aneks, f, allow_unicode=True)

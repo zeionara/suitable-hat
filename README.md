@@ -16,3 +16,8 @@ To convert text to speech using google translate api:
 python -m suitable-hat tts google --after-file-delay 0
 python -m suitable-hat tts google --after-file-delay 0 --input-file assets/baneks/000000.txt --output-file anek.mp3 --max-n-chars 100
 ```
+# Corpora
+Collected corpora are available via [this link](https://bit.ly/baneks-corpora) and are presented in the following variations:  
+| verison | description | generation start date |
+| --- | --- | --- |
+| 0.7 | Includes texts of aneks and remasterings extracted from the main community, as well as lists of people who have liked and authored them as well as complete list of unique users occurred in the data. | 23.10.2020 |
