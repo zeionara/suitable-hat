@@ -1,11 +1,12 @@
 import os
+import json
 import yaml
 import pickle
 import re
 from itertools import chain
 from os import listdir
 from os.path import isfile, join
-from time import sleep
+from time import sleep, time
 from typing import List
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -23,25 +24,96 @@ HEADERS = {
     'sec-fetch-user': '?1',
     'sec-fetch-dest': 'document',
     'accept-language': 'en-US,en;q=0.9,ru-RU;q=0.8,ru;q=0.7'
-    # 'cookie': os.environ['COOKIE']
 }
+
+LOGIN_HEADERS = {
+    'authority': 'login.vk.com',
+    'cache-control': 'max-age=0',
+    'upgrade-insecure-requests': '1',
+    'origin': 'https://vk.com',
+    'content-type': 'application/x-www-form-urlencoded',
+    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
+    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+    'sec-fetch-site': 'same-site',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-user': '?1',
+    'sec-fetch-dest': 'iframe',
+    'referer': 'https://vk.com/',
+    'accept-language': 'en-US,en;q=0.9,ru-RU;q=0.8,ru;q=0.7'
+}
+
+cookies = []
+
+remixsid_regexp = re.compile('remixsid=[^;]+;')
+
+current_cookie_id = 0
 
 payload_regexp = re.compile('"<.+>"')
 wall_post_id_regexp = re.compile('wall(?:_reply)?-[0-9]+_[0-9]+')
-friend_id_regexp = re.compile('ava=1","([^"]+)"')
-id_regexp = re.compile('id([0-9]{4,20})')
+friend_id_regexp = re.compile('ava=1","([^"<]+)"')
+id_regexp = re.compile('"user_id":([0-9]+)')
 
 href_to_id_mappings = {}
 
-delay = 1
+delay = 1.0
 
+
+def login():
+    resp = urlopen(
+        Request(
+            url='https://login.vk.com/?act=login',
+            headers=LOGIN_HEADERS,
+            data=''.encode()
+        )
+    )
+    cookies[0] = f"{LOGIN_HEADERS['cookie']}; {remixsid_regexp.findall(resp.getheader('Set-Cookie'))[0]}"
+
+
+def get_ids(hrefs: iter):
+   resp=query(url=f"https://api.vk.com/method/users.get?user_ids={','.join(href[1:] for href in hrefs)}&v=5.124&fields=id,screen_name&access_token={os.environ['VK_TOKEN']}")
+   results = {}
+
+   for item in json.loads(resp)['response']:
+        if item['first_name'] != 'DELETED' and 'deactivated' not in item:
+            # print(item)
+            results[item['screen_name']] = {'id': item['id'], 'is-closed': item['is_closed'], 'is-deleted': False}
+   for href in hrefs:
+        if href[1:] not in results:
+            results[href[1:]] = {'is-deleted': True, 'is-closed': False}
+   return results
+
+
+def get_friends_list(id: int):
+   resp=query(url=f"https://api.vk.com/method/friends.get?user_id={id}&v=5.124&fields=screen_name&access_token={os.environ['VK_TOKEN']}")
+   return [item['screen_name'] for item in json.loads(resp)['response']['items'] if item['first_name'] != 'DELETED' and 'deactivated' not in item]
+
+
+def get_headers():
+    # global HEADERS, current_cookie_id, cookies
+    # HEADERS['cookie'] = cookies[current_cookie_id]
+    # current_cookie_id = (current_cookie_id + 1) % len(cookies)
+    return HEADERS
 
 def get_id(href: str):
     if href in href_to_id_mappings:
         return href_to_id_mappings[href]
     else:
         response = query(url=f'https://vk.com{href}')
-        id = int(id_regexp.findall(response)[0])
+        # print(response)
+        # print(f'https://vk.com{href}')
+        matches = id_regexp.findall(response)
+        print(f'Got ids for {href}: ', matches)
+        
+        try:
+            id = int(matches[0])
+        except IndexError:
+            if href.startswith('/id'):
+                try:
+                    id = int(href.replace('/id', '', 1))
+                except ValueError:
+                    id = None
+            else:
+                id = None
         href_to_id_mappings[href] = id
         return id
 
@@ -51,10 +123,11 @@ def get_friends(id: int):
         response = payload_regexp.findall(
             query(url=f'https://vk.com/al_friends.php?act=load_friends_silent&al=1&gid=0&id={id}')
         )[0].replace('\\', '')
+        return friend_id_regexp.findall(response)
     except IndexError:
         return None
-    sleep(delay)
-    return friend_id_regexp.findall(response)
+    # finally:
+    #     sleep(delay)
 
 
 def get_communities(id: int):
@@ -62,17 +135,18 @@ def get_communities(id: int):
         response = payload_regexp.findall(
             query(url=f'https://vk.com/al_fans.php?act=box&al=1&al_ad=0&oid={id}&tab=idols')
         )[0].replace('\\', '')
+        bs = BeautifulSoup(response, features='html.parser')
+        communities = list(
+            map(
+                lambda item: item['href'][1:],
+                bs.find_all('a', {'class': 'fans_idol_lnk'})
+            )
+        )
+        return communities
     except IndexError:
         return None
-    bs = BeautifulSoup(response, features='html.parser')
-    communities = tuple(
-        map(
-            lambda item: item['href'],
-            bs.find_all('a', {'class': 'fans_idol_lnk'})
-        )
-    )
-    sleep(delay)
-    return communities
+    # finally:
+    #     sleep(delay)
 
 
 def _post_process_response(response: str):
@@ -107,13 +181,18 @@ def query(url: str):
                 urlopen(
                     Request(
                         url=url,
-                        headers=HEADERS
+                        headers=get_headers()
                     )
-                ).read().decode(encoding='windows-1251')
+                ).read().decode(encoding='windows-1251', errors='ignore')
             )
-        except HTTPError:
-            print(f"Error querying url {url}. Trying again...")
-            sleep(2)
+        except HTTPError as e:
+            if e.code != 404:
+                print(e.__dict__)
+                print(f"Error querying url {url}. Trying again...")
+                sleep(2 * delay)
+            else:
+                return ''
+
 
 
 def read_all(items: List, query: callable, parse_: callable):
@@ -312,5 +391,87 @@ def merge(dir_path: str = 'caches', file_path: str = 'aneks.yml'):
 
     _update_cache(aneks, f"{file_path.split('.', 1)[0]}.pkl")
 
-    with open(file_path, 'w') as f:
-        yaml.dump(aneks, f, allow_unicode=True)
+    print(f'Found {len(tuple(aneks["users"]))} users')
+
+    # with open(file_path, 'w') as f:
+    #     yaml.dump(aneks, f, allow_unicode=True)
+
+def load_users(cache_path: str = 'assets/baneks.pkl', file_path: str = 'assets/users.pkl', cache_delay: int = 100):
+    # login()
+    # print(delay)
+    # for i in range(10):
+    #     print(get_headers())
+    with open(cache_path, 'rb') as f:
+        aneks = pickle.load(f)
+    users_ = aneks['users']
+    del aneks
+    # users_ = ['/mcluvin', '/gospes', '/agrishin', '/sergortm', '/lexajeas', '/id10562339', '/ksp256', '/poluektoff_08', '/id250088249', '/id57486417', '/katherinaklim', '/kateeeeeriina', '/mrbloodness', '/dimchu', '/idinaxyi31', '/id_hell_paradise', '/sugarhl', '/pinkamena', '/id83420082', '/id556218588', '/idrecon666', '/valera_popov_0704', '/oimygoddaddy', '/id210257337', '/77mike', '/id16449012', '/igor_z93', '/id161114435', '/msirkin', '/jon_pelegrim', '/id117934156', '/dlnkayt', '/fineguy', '/megamrazhoma', '/faerrx', '/valera.gorbunov', '/id32572564', '/battsn5', '/dimka26', '/noirshinobi', '/id500133915', '/pushkinalove', '/id192746934', '/morgol07', '/dlukich', '/ipezio', '/alkoforce', '/id106100939', '/id317006682', '/phephe975', '/akoretsk', '/id43721345', '/id270101922', '/id143522890', '/antusheva03', '/vovan7590', '/phantom87', '/id600994201', '/docm0t', '/doom04', '/id20929669', '/valentln1337', '/e_k_xrystik', '/ares3', '/id175277384', '/gggqggge', '/robbievil', '/andrey_b1999', '/fox_martin', '/kartavii_hren', '/daria_sakyra', '/id303227458', '/merkulow', '/yudinko', '/ad_with_ak', '/alya_dyra', '/id288088296', '/id14840489', '/alex_goldenmyer', '/chaechka_e', '/id3644923', '/drevniydraianec', '/ks.evtushenko', '/n.bewiga', '/naggets16', '/tea_sweet_t', '/drakosha_d', '/id563245194', '/skyinmymind', '/id188720379', '/id142901702', '/id138075134', '/whoa_m1', '/gordina1707', '/qucro', '/justrooit', '/id183295771', '/marsh_stanley_marsh', '/vanessa_super', '/anomalechka']
+    # users_ = ['/lipatova96']
+    # print(','.join(user[1:] for user in users_))
+    # ids = {}
+    # print(users_)
+    chunk_size = 200
+    i = 0
+    start = time()
+    n_chunks = len(users_) // chunk_size + 1
+    for chunk in [users_[i*chunk_size:(i+1)*chunk_size] for i in range(n_chunks)]:
+        if i % 2 == 1:
+            ids_ = get_ids(chunk)
+            ids = {}
+            j = 0
+            for key, value in ids_.items():
+                # if key not in ids:
+                if 'id' in value and not (value['is-closed'] or value['is-deleted']):
+                    value['communities'] = get_communities(value['id'])
+                    value['friends'] = get_friends_list(value['id'])
+                print(f"{j}: {value}")
+                ids[key] = value
+                j += 1
+            _update_cache(ids, f'assets/ids/{i*chunk_size}-{(i+1)*chunk_size}.pkl')
+        i += 1
+        print(f'Handled {i} / {n_chunks} in {time() - start} seconds')
+        start = time()
+    # print(chunks)
+    # ids = get_ids(users_)
+    # ids_for_next_stage = [item['id'] for item in ids.values() if not (item['is-closed'] or item['is-deleted'])]
+    # print(len(ids_for_next_stage))
+    _update_cache(ids, f'assets/ids/{i*chunk_size}-{(i+1)*chunk_size}.pkl')
+    # n_total = len(users_)
+    # n_closed_profiles = 0
+    # i = 0
+    # users = {}
+    # start = time()
+    # try:
+    #     for user in users_:
+    #         if user not in users:
+    #             print(f'Adding {user}...')
+    #             id_ = get_id(user)
+    #             if id_ is None:
+    #                 info = {'is-closed': True}
+    #             else:
+    #                 friends = get_friends(id_)
+    #                 communities = get_communities(id_)
+    #                 info = {
+    #                     'id': id_,
+    #                     'is-closed': friends is None and communities is None
+    #                 }
+    #                 if friends is not None:
+    #                     info['friends'] = friends
+    #                 if communities is not None:
+    #                     info['communities'] = communities
+    #             if info['is-closed']:
+    #                 n_closed_profiles += 1
+    #             users[user] = info
+    #             print(info)
+    #             if i > 0 and i % cache_delay == 0:
+    #                 login()
+    #                 _update_cache(users, file_path)
+    #                 print(f'Handled batch in {time() - start} seconds')
+    #                 start = time()
+    #                 # print('Users cache was updated')
+    #         i += 1
+    #         print(f'Handled {i} / {n_total} users')
+    # finally:
+    #     print(f'Found {n_closed_profiles} closed profiles')
+    #     _update_cache(users, file_path)
+    #     # print('Users cache was updated')

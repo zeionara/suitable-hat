@@ -1,6 +1,6 @@
 import click
 
-from .parsing import parse, merge
+from .parsing import parse, merge, load_users as load_users_
 from .tts.crt import generate_audio as generate_audio_with_crt
 from .tts.google import generate_audio as generate_audio_with_google
 
@@ -42,6 +42,13 @@ def tts(engine: str = 'crt', input_file: str = 'text.txt', output_file: str = 'a
         generate_audio_with_google(input_file_path=input_file, output_file_path=output_file, after_chunk_delay=after_chunk_delay, after_file_delay=after_file_delay, max_n_chars=max_n_chars)
     else:
         raise ValueError(f'Unknown engined identifier {engine}')
+
+
+@main.command()
+@click.option('--cache-path', type=str, default='assets/baneks.pkl')
+@click.option('--file-path', type=str, default='assets/users.pkl')
+def load_users(cache_path: str = 'assets/baneks.pkl', file_path: str = 'assets/users.pkl'):
+    load_users_(cache_path, file_path)
 
 
 if __name__ == "__main__":
