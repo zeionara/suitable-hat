@@ -64,13 +64,17 @@ def merge(dir_path: str = 'caches', file_path: str = 'aneks.pkl'):
 
 def _handle_chunk_of_users(enumerated_chunk, chunk_size: int, output_dir: str):
     i, chunk = enumerated_chunk
+    filename = f'{output_dir}/{i * chunk_size}-{(i + 1) * chunk_size}.pkl'
+    if isfile(filename):
+        print(f'Skipping {filename}...')
+        return
     ids = get_ids(chunk)
     for j, (key, value) in enumerate(ids.items()):
         if 'id' in value and not (value['is-closed'] or value['is-deleted']):
             value['communities'] = get_communities(value['id'])
             value['friends'] = get_friends(value['id'])
         print(f"{j} {key}: {value}")
-    write_cache(ids, f'{output_dir}/{i * chunk_size}-{(i + 1) * chunk_size}.pkl')
+    write_cache(ids, filename)
 
 
 def load_users(input_file: str = 'assets/baneks.pkl', should_test: bool = False, reverse: bool = False, chunk_size: int = 200, n_workers: int = 5, output_dir: str = 'assets/users'):

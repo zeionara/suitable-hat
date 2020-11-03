@@ -1,6 +1,6 @@
 import click
 
-from .converters import to_triples as to_triples_, users_to_triples as users_to_triples_
+from .converters import to_triples as to_triples_, users_to_triples as users_to_triples_, triples_to_graph as triples_to_graph_
 from .parsers import parse, merge, load_users as load_users_
 from .tts.crt import generate_audio as generate_audio_with_crt
 from .tts.google import generate_audio as generate_audio_with_google
@@ -68,6 +68,13 @@ def to_triples(input_file: str = 'assets/baneks.pkl', output_file: str = 'assets
 @click.option('--output-file', type=str, default='assets/triples.txt')
 def users_to_triples(input_dir: str = 'assets/users', output_file: str = 'assets/triples.txt'):
     users_to_triples_(input_dir=input_dir, output_file=output_file)
+
+
+@main.command()
+@click.option('--input-file', type=str, default='assets/data.txt')
+@click.option('--output-file', type=str, default='assets/data.ttl')
+def triples_to_graph(input_file: str = 'assets/data.txt', output_file: str = 'assets/data.ttl'):
+    triples_to_graph_(input_file=input_file, output_file=output_file)
 
 
 if __name__ == "__main__":
