@@ -17,7 +17,7 @@ def write_cache(payload, cache_path: str):
     print('Cache was updated successfully')
 
 
-def write(filename, content):
-    with open(filename, 'w') as f:
+def write(filename, content, should_append: bool = False):
+    with open(filename, 'a' if should_append else 'w') as f:
         f.write(content)
         f.flush()

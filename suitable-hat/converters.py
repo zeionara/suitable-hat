@@ -1,5 +1,8 @@
+import os
+import re
 from os import listdir
 from os.path import join, isfile
+from time import time
 
 from rdflib import Namespace, Literal, Graph, URIRef
 
@@ -48,6 +51,8 @@ CREATED_ = BANEKS.created
 
 # ttl uris
 NODE_ = 'http://baneks.ru/{id}'
+
+PREFIX_REGEXP = re.compile('@prefix.+\\.\n')
 
 
 def _generate_triples(item: dict, item_id: str):
@@ -102,11 +107,37 @@ def users_to_triples(input_dir: str = 'assets/users', output_file: str = 'assets
                     _write_triple(out, map(str, triple))
 
 
-def triples_to_graph(input_file: str = 'assets/data.txt', output_file: str = 'assets/data.ttl'):
+def is_empty(graph):
+    try:
+        next(graph.objects())
+        return False
+    except StopIteration:
+        return True
+
+
+def triples_to_graph(input_file: str = 'assets/data.txt', output_file: str = 'assets/data.ttl', n_triples_per_graph: int = 10e6, n_triples_per_log_entry: int = 3 * 10e5):
     graph = Graph()
     graph.bind('rdf', RDF)
     graph.bind('baneks', BANEKS)
     i = 0
+    were_prefixes_written = False
+
+    def flush_graph():
+        nonlocal graph, were_prefixes_written
+        serialized_graph = graph.serialize(format='ttl').decode('utf-8')
+        if were_prefixes_written:
+            serialized_graph = PREFIX_REGEXP.sub('', serialized_graph)
+        else:
+            were_prefixes_written = True
+        write(output_file, serialized_graph, should_append=True)
+        graph = Graph()
+
+    try:
+        os.remove(output_file)
+    except OSError:
+        pass
+
+    start = time()
     with open(input_file, 'r') as file:
         while True:
             try:
@@ -139,6 +170,12 @@ def triples_to_graph(input_file: str = 'assets/data.txt', output_file: str = 'as
                 else:
                     raise TypeError(f'Unknown type of triple: {relationship}')
                 i += 1
+                if i % n_triples_per_graph == 0:
+                    flush_graph()
+                if i % n_triples_per_log_entry == 0:
+                    print(f'Handled {i} triples after {time() - start} seconds')
+                    start = time()
             except ValueError:
                 break
-    write(output_file, graph.serialize(format='ttl').decode('utf-8'))
+    if not is_empty(graph):
+        flush_graph()

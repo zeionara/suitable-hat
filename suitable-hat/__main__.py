@@ -73,8 +73,10 @@ def users_to_triples(input_dir: str = 'assets/users', output_file: str = 'assets
 @main.command()
 @click.option('--input-file', type=str, default='assets/data.txt')
 @click.option('--output-file', type=str, default='assets/data.ttl')
-def triples_to_graph(input_file: str = 'assets/data.txt', output_file: str = 'assets/data.ttl'):
-    triples_to_graph_(input_file=input_file, output_file=output_file)
+@click.option('--n-triples-per-graph', type=int, default=10e6)
+@click.option('--n-triples-per-log-entry', type=int, default=3 * 10e5)
+def triples_to_graph(input_file: str = 'assets/data.txt', output_file: str = 'assets/data.ttl', n_triples_per_graph: int = 10e6, n_triples_per_log_entry: int = 3 * 10e5):
+    triples_to_graph_(input_file=input_file, output_file=output_file, n_triples_per_graph=n_triples_per_graph, n_triples_per_log_entry=n_triples_per_log_entry)
 
 
 if __name__ == "__main__":
