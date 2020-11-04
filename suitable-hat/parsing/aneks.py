@@ -58,7 +58,8 @@ def get_remasterings(content, community_id: int):
             query_sequence(
                 items=parse_(content),
                 query_=lambda offset: query(
-                    url=f'https://vk.com/wall-{community_id}?act=get_post_replies&al=1&count=20&item_id={post_id}&offset={offset}&order=smart&prev_id={post_id}'
+                    url=f'https://vk.com/wall-{community_id}?act=get_post_replies&al=1&count=20&item_id={post_id}&offset={offset}&order=smart&prev_id={post_id}',
+                    as_vk_payload=True
                 ),
                 parse_=parse_
             )

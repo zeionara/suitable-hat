@@ -54,10 +54,10 @@ def is_end_of_patch(existing_data_description: dict, aneks: dict, n_remasterings
     def is_edge_anek(anek: dict):
         if anek['text'] not in existing_data_description['remastering-counters']:
             return False
-        new_n_remasterings = existing_data_description['remastering-counters'][anek['text']]
-        old_n_remasterings = len(anek['remasterings'])
+        old_n_remasterings = existing_data_description['remastering-counters'][anek['text']]
+        new_n_remasterings = len(anek['remasterings'])
         if old_n_remasterings > 0:
-            print('Margin is', new_n_remasterings / old_n_remasterings - 1.0)
+            print(f'Margin is {new_n_remasterings} / {old_n_remasterings}', new_n_remasterings / old_n_remasterings - 1.0)
         return (
                 old_n_remasterings == new_n_remasterings == 0 or
                 (

@@ -8,11 +8,19 @@ from time import time
 from typing import Tuple
 from urllib.error import HTTPError
 
-from .converters import to_triples, users_to_triples, triples_to_graph
+from .converters import to_triples, users_to_triples, _write_triple, triples_to_graph
 from .parsing.aneks import get_posts
 from .parsing.users import get_ids, get_friends, get_communities
-from .parsing.utils.patching import describe_existing_data, is_end_of_patch
-from .utils import write_cache
+from .parsing.utils.patching import is_end_of_patch, COMMUNITIES, describe_existing_data
+from .utils import write_cache, read_cache
+
+
+def _parse_community_aneks(community_id: int, existing_data_description: dict):
+    return parse(
+        community_id=community_id,
+        should_stop=lambda aneks_: is_end_of_patch(existing_data_description, aneks_),
+        should_cache=False
+    )
 
 
 def parse_patch(input_file: str = 'assets/0.8.txt', output_file: str = 'assets/patch.ttl'):
@@ -24,72 +32,50 @@ def parse_patch(input_file: str = 'assets/0.8.txt', output_file: str = 'assets/p
 
     # Perform necessary queries for obtaining new data
 
-    # write_cache(existing_data_description, 'assets/existing-data-description.pkl')
-    # existing_data_description = read_cache('assets/existing-data-description.pkl')
-    aneks = parse(
-        should_stop=lambda aneks_: is_end_of_patch(existing_data_description, aneks_),
-        should_cache=False
-    )
-    # write_cache(aneks, 'assets/aneks-patch.pkl')
-    # aneks = read_cache('assets/aneks-patch.pkl')
-    new_users = tuple(
-        set(
-            map(
-                lambda user: user[1:],
-                aneks['users']
+    with Pool(len(COMMUNITIES)) as pool:
+        aneks = merge(
+            aneks_groups=pool.map(
+                partial(_parse_community_aneks, existing_data_description=existing_data_description),
+                COMMUNITIES
             )
-        ).difference(existing_data_description['users'])
+        )
+
+    users = load_users(
+        users=tuple(
+            set(
+                map(
+                    lambda user: user[1:],
+                    aneks['users']
+                )
+            ).difference(existing_data_description['users'])
+        ), should_cache=False, chunk_size=20
     )
-    users = load_users(users=new_users, should_cache=False, chunk_size=20)
-    # write_cache(users, 'assets/users-patch.pkl')
-    # users = read_cache('assets/users-patch.pkl')
 
     # Convert collected data to triples
 
     anek_triples = to_triples(aneks=aneks, first_anek_id=existing_data_description['n-aneks'], first_remastering_id=existing_data_description['n-remasterings'])
-    # print(anek_triples)
     user_triples = users_to_triples(users=users)
-    # print(user_triples)
-
-    # print(user_triples)
-    # for user, _, __ in user_triples:
-    #     if user in existing_data_description['users']:
-    #         print(user)
-
-    # triples = tuple(
-    #     drop_redundant_triples(
-    #         triples=chain(
-    #             anek_triples,
-    #             user_triples
-    #         ),
-    #         existing_data_description=existing_data_description
-    #     )
-    # )
-    # triples = tuple(
-    #     chain(
-    #         anek_triples,
-    #         user_triples
-    #     )
-    # )
 
     # Write triples on disk
 
-    triples_to_graph(
-        triples=chain(
-            anek_triples,
-            user_triples
-        ),
-        output_file=output_file
+    triples = chain(
+        anek_triples,
+        user_triples
     )
+    if output_file.split('.')[-1] == 'ttl':
+        triples_to_graph(
+            triples=chain(
+                anek_triples,
+                user_triples
+            ),
+            output_file=output_file
+        )
+    else:
+        with open(output_file, 'w') as file:
+            for triple in triples:
+                _write_triple(file, triple)
 
     print(f'Generated patch in {time() - start} seconds (collected {len(anek_triples) + len(user_triples)} triples).')
-
-    # print(is_end_of_patch(existing_data_description, aneks))
-    # for i, anek in enumerate(aneks['aneks']):
-    #     if anek['text'] in existing_data_description['remastering-counters']:
-    #         # print(i, anek['text'])
-    #         print(len(anek['remasterings']), )
-    # print(existing_data_description['users'])
 
 
 def parse(community_id: int = 45491419, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl',
@@ -124,27 +110,38 @@ def parse(community_id: int = 45491419, offset: int = 0, cache_delay: int = 100,
     return aneks
 
 
-def merge(dir_path: str = 'caches', file_path: str = 'aneks.pkl'):
-    aneks = {'aneks': [], 'users': set()}
-    anek_texts = set()
-    for file in filter(
-            lambda file_path_: isfile(file_path_),
-            map(
-                lambda file_path_: join(dir_path, file_path_),
-                listdir(dir_path)
-            )
-    ):
-        with open(file, 'rb') as f:
-            aneks_ = pickle.load(f)
-        for anek in aneks_['aneks']:
+def merge(dir_path: str = None, file_path: str = None, aneks_groups: iter = None):
+    assert not (dir_path and aneks_groups) and (dir_path or aneks_groups)
+
+    def append_aneks(aneks__: dict):
+        for anek in aneks__['aneks']:
             if anek['text'] not in anek_texts:
                 anek_texts.add(anek['text'])
                 anek['remasterings'] = list(anek['remasterings'])
                 aneks['aneks'].append(anek)
-        aneks['users'] = aneks_['users'].union(aneks['users'])
+        aneks['users'] = aneks__['users'].union(aneks['users'])
+
+    aneks = {'aneks': [], 'users': set()}
+    anek_texts = set()
+    if aneks_groups is None:
+        for file in filter(
+                lambda file_path_: isfile(file_path_),
+                map(
+                    lambda file_path_: join(dir_path, file_path_),
+                    listdir(dir_path)
+                )
+        ):
+            with open(file, 'rb') as f:
+                append_aneks(pickle.load(f))
+    else:
+        for group in aneks_groups:
+            append_aneks(group)
 
     aneks['users'] = list(aneks['users'])
-    write_cache(aneks, file_path)
+    if file_path is None:
+        return aneks
+    else:
+        write_cache(aneks, file_path)
 
 
 def _handle_chunk_of_users(enumerated_chunk, chunk_size: int, output_dir: str, should_cache: bool = True):
