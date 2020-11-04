@@ -1,5 +1,5 @@
 def post_process_response(response: str):
-    return response.replace('Expand text…', ' ')
+    return response.replace('Expand text…', ' ').replace('Expand text...', ' ')
 
 
 def make_community_ref(comminity_id: int):

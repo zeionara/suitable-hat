@@ -11,6 +11,9 @@ def get_ids(hrefs: iter):
         as_json=True
     )
 
+    if 'response' not in response:
+        return {}
+
     ids = {
         item['screen_name']: {'id': item['id'], 'is-closed': item['is_closed'], 'is-deleted': False}
         for item in response['response']

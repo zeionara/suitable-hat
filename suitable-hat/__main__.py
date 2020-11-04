@@ -1,7 +1,7 @@
 import click
 
 from .converters import to_triples as to_triples_, users_to_triples as users_to_triples_, triples_to_graph as triples_to_graph_
-from .parsers import parse, merge, load_users as load_users_
+from .parsers import parse, merge, load_users as load_users_, parse_patch
 from .tts.crt import generate_audio as generate_audio_with_crt
 from .tts.google import generate_audio as generate_audio_with_google
 
@@ -18,6 +18,13 @@ def main():
 @click.option('--cache-path', type=str, default='aneks.pkl')
 def load(community_id: int = 85443458, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl'):
     parse(community_id=community_id, cache_delay=cache_delay, cache_path=cache_path, offset=offset)
+
+
+@main.command()
+@click.option('--input-file', type=str, default='assets/0.8.txt')
+@click.option('--output-file', type=str, default='assets/patch.ttl')
+def load_patch(input_file: str = 'assets/0.8.txt', output_file: str = 'assets/patch.ttl'):
+    parse_patch(input_file=input_file, output_file=output_file)
 
 
 @main.command()
