@@ -42,6 +42,7 @@ def query(url: str, as_json: bool = False, as_vk_payload: bool = False):
             break
         except HTTPError as e:
             if e.code != 404:
+                print(e.__dict__)
                 print('Error sending query. Retrying...')
                 sleep(http_error_delay)
             else:

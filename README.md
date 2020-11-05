@@ -20,4 +20,7 @@ python -m suitable-hat tts google --after-file-delay 0 --input-file assets/banek
 Collected corpora are available via [this link](https://bit.ly/baneks-corpora) and are presented in the following variations:  
 | verison | description | generation start date |
 | --- | --- | --- |
-| 0.7 | Includes texts of aneks and remasterings extracted from the main community, as well as lists of people who have liked and authored them as well as complete list of unique users occurred in the data. | 23.10.2020 |
+| 00.07.00 | Includes texts of aneks and remasterings extracted from the main community, as well as lists of people who have liked and authored them as well as complete list of unique users occurred in the data. | 23.10.2020 |
+| 00.07.01 | Added aneks from the two additional communities (baneksbest and anekdotikategoriib) | 23.10.2020 |
+| 00.08.00 | Added users (their ids, friends and subscriptions) | 23.10.2020 |
+| 00.09.00 | Redesigned the shape of the dataset (changed way of generating node identifiers so as in the newer version original values are taken whenever possible + community identifier + node type). Does not contain data about users (precisely, their lists of friends and subscriptions). | 04.11.2020 |

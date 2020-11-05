@@ -1,7 +1,7 @@
 import click
 
 from .converters import to_triples as to_triples_, users_to_triples as users_to_triples_, triples_to_graph as triples_to_graph_
-from .parsers import parse, merge, load_users as load_users_, parse_patch
+from .parsers import parse, merge, load_users as load_users_, parse_patch, parse_all
 from .tts.crt import generate_audio as generate_audio_with_crt
 from .tts.google import generate_audio as generate_audio_with_google
 
@@ -18,6 +18,12 @@ def main():
 @click.option('--cache-path', type=str, default='aneks.pkl')
 def load(community_id: int = 85443458, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl'):
     parse(community_id=community_id, cache_delay=cache_delay, cache_path=cache_path, offset=offset)
+
+
+@main.command()
+@click.option('--output-file', type=str, default='assets/aneks.pkl')
+def load_all(output_file='assets/aneks.pkl'):
+    parse_all(output_file=output_file)
 
 
 @main.command()
@@ -52,9 +58,7 @@ def tts(engine: str = 'crt', input_file: str = 'text.txt', output_file: str = 'a
 
 @main.command()
 @click.option('--input-file', type=str, default='assets/baneks.pkl')
-@click.option('--output-dir', type=str, default='assets/users'
-                                                ''
-                                                '')
+@click.option('--output-dir', type=str, default='assets/users')
 @click.option('--should-test', is_flag=True)
 @click.option('--reverse', is_flag=True)
 @click.option('--chunk-size', type=int, default=200)

@@ -1,7 +1,9 @@
+import os
 import pickle
 from functools import partial
 from itertools import chain
 from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 from os import listdir
 from os.path import isfile, join
 from time import time
@@ -10,9 +12,9 @@ from urllib.error import HTTPError
 
 from .converters import to_triples, users_to_triples, _write_triple, triples_to_graph
 from .parsing.aneks import get_posts
-from .parsing.users import get_ids, get_friends, get_communities
+from .parsing.users import get_friends, get_communities
 from .parsing.utils.patching import is_end_of_patch, COMMUNITIES, describe_existing_data
-from .utils import write_cache, read_cache
+from .utils import write_cache
 
 
 def _parse_community_aneks(community_id: int, existing_data_description: dict):
@@ -78,10 +80,23 @@ def parse_patch(input_file: str = 'assets/0.8.txt', output_file: str = 'assets/p
     print(f'Generated patch in {time() - start} seconds (collected {len(anek_triples) + len(user_triples)} triples).')
 
 
-def parse(community_id: int = 45491419, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl',
+def parse_all(output_file: str = 'aneks.pkl'):
+    with Pool(len(COMMUNITIES)) as pool:
+        aneks = merge(
+            aneks_groups=pool.map(
+                parse,
+                COMMUNITIES
+            )
+        )
+    write_cache(aneks, output_file)
+
+
+def parse(community_id: int = 45491419, offset: int = 0, cache_delay: int = 100, cache_path=None,
           should_stop: callable = lambda aneks: len(aneks['aneks']) == 0, should_cache: bool = True):
+    if cache_path is None:
+        cache_path = f'assets/{community_id}.pkl'
     aneks = {'aneks': [], 'users': set()}
-    anek_texts = set()
+    anek_ids = set()
     while True:
         print(f'Offset = {offset}')
         try:
@@ -95,8 +110,8 @@ def parse(community_id: int = 45491419, offset: int = 0, cache_delay: int = 100,
                 lambda anek_: anek_['text'] is not None,
                 aneks_['aneks']
         ):
-            if anek['text'] not in anek_texts:
-                anek_texts.add(anek['text'])
+            if anek['id'] not in anek_ids:
+                anek_ids.add(anek['id'])
                 aneks['aneks'].append(anek)
         aneks['users'] = set(aneks_['users']).union(aneks['users'])
         if should_cache and (offset // cache_delay - (offset - len(aneks_['aneks'])) // cache_delay) > 0:
@@ -115,14 +130,15 @@ def merge(dir_path: str = None, file_path: str = None, aneks_groups: iter = None
 
     def append_aneks(aneks__: dict):
         for anek in aneks__['aneks']:
-            if anek['text'] not in anek_texts:
-                anek_texts.add(anek['text'])
+            anek_id = (anek['community'], anek['id'])
+            if anek_id not in anek_ids:
+                anek_ids.add(anek_id)
                 anek['remasterings'] = list(anek['remasterings'])
                 aneks['aneks'].append(anek)
         aneks['users'] = aneks__['users'].union(aneks['users'])
 
     aneks = {'aneks': [], 'users': set()}
-    anek_texts = set()
+    anek_ids = set()
     if aneks_groups is None:
         for file in filter(
                 lambda file_path_: isfile(file_path_),
@@ -138,10 +154,19 @@ def merge(dir_path: str = None, file_path: str = None, aneks_groups: iter = None
             append_aneks(group)
 
     aneks['users'] = list(aneks['users'])
-    if file_path is None:
-        return aneks
-    else:
+    if file_path is not None:
         write_cache(aneks, file_path)
+
+    return aneks
+
+
+def _handle_user(user_id):
+    value = {
+        'communities': get_communities(user_id),
+        'friends': get_friends(user_id)
+    }
+    print(f"{user_id}: {value}")
+    return user_id, value
 
 
 def _handle_chunk_of_users(enumerated_chunk, chunk_size: int, output_dir: str, should_cache: bool = True):
@@ -150,32 +175,39 @@ def _handle_chunk_of_users(enumerated_chunk, chunk_size: int, output_dir: str, s
     if should_cache and isfile(filename):
         print(f'Skipping {filename}...')
         return
-    ids = get_ids(chunk)
-    for j, (key, value) in enumerate(ids.items()):
-        if 'id' in value and not (value['is-closed'] or value['is-deleted']):
-            value['communities'] = get_communities(value['id'])
-            value['friends'] = get_friends(value['id'])
-        print(f"{j} {key}: {value}")
+    # ids = get_ids(chunk)
+    n_items = len(chunk)
+
+    if n_items > 0:
+        with ThreadPool(n_items) as pool:
+            ids = pool.map(
+                _handle_user,
+                chunk
+            )
+    else:
+        ids = ()
+
+    # for j, (key, value) in enumerate(ids.items()):
+    #     if 'id' in value and not (value['is-closed'] or value['is-deleted']):
+    #         value['communities'] = get_communities(value['id'])
+    #         value['friends'] = get_friends(value['id'])
+    #     print(f"{j} {key}: {value}")
     if should_cache:
         write_cache(ids, filename)
-    else:
-        return ids
+    return ids
 
 
 def load_users(input_file: str = 'assets/baneks.pkl', should_test: bool = False, reverse: bool = False, chunk_size: int = 200, n_workers: int = 5, output_dir: str = 'assets/users',
-               users: Tuple = None, should_cache: bool = False):
+               users: Tuple = None, should_cache: bool = True):
     if users is None:
         if should_test:
             users = [
-                '/mcluvin', '/gospes', '/agrishin', '/sergortm', '/lexajeas', '/id10562339', '/ksp256', '/poluektoff_08', '/id250088249', '/id57486417', '/katherinaklim', '/kateeeeeriina',
-                '/mrbloodness', '/dimchu', '/idinaxyi31', '/id_hell_paradise', '/sugarhl', '/pinkamena', '/id83420082', '/id556218588', '/idrecon666', '/valera_popov_0704', '/oimygoddaddy',
-                '/id210257337', '/77mike', '/id16449012', '/igor_z93', '/id161114435', '/msirkin', '/jon_pelegrim', '/id117934156', '/dlnkayt', '/fineguy', '/megamrazhoma', '/faerrx',
-                '/valera.gorbunov', '/id32572564', '/battsn5', '/dimka26', '/noirshinobi', '/id500133915', '/pushkinalove', '/id192746934', '/morgol07', '/dlukich', '/ipezio', '/alkoforce',
-                '/id106100939', '/id317006682', '/phephe975', '/akoretsk', '/id43721345', '/id270101922', '/id143522890', '/antusheva03', '/vovan7590', '/phantom87', '/id600994201', '/docm0t',
-                '/doom04', '/id20929669', '/valentln1337', '/e_k_xrystik', '/ares3', '/id175277384', '/gggqggge', '/robbievil', '/andrey_b1999', '/fox_martin', '/kartavii_hren', '/daria_sakyra',
-                '/id303227458', '/merkulow', '/yudinko', '/ad_with_ak', '/alya_dyra', '/id288088296', '/id14840489', '/alex_goldenmyer', '/chaechka_e', '/id3644923', '/drevniydraianec',
-                '/ks.evtushenko', '/n.bewiga', '/naggets16', '/tea_sweet_t', '/drakosha_d', '/id563245194', '/skyinmymind', '/id188720379', '/id142901702', '/id138075134', '/whoa_m1',
-                '/gordina1707', '/qucro', '/justrooit', '/id183295771', '/marsh_stanley_marsh', '/vanessa_super', '/anomalechka'
+                86842338, 190950887, 40077913, 224190963, 134296075, 183295771, 71955701, 288088296, 563245194, 356410583, 280817019, 142901702, 14810486, 431459795, 369068104, 210986842, 138075134,
+                73261972, 175277384, 188720379, 230623608, 224881177, 345361806, 595514360, 42704353, 225958714, 14840489, 198173201, 499996054, 490365698, 15908362, 311086986, 132839076, 303227458,
+                138548298, 144376886, 137561766, 3644923, 158569800, 500133915, 276656239, 234780436, 533827295, 43721345, 279763544, 20929669, 600994201, 106100939, 213148944, 35193453, 475695851,
+                518132713, 38601136, 143522890, 222092628, 96042672, 222688320, 64251011, 270101922, 296044582, 32554036, 192330600, 4745539, 32957486, 257099862, 214375440, 147897952, 83420082,
+                204884400, 276225935, 16449012, 117934156, 434968590, 117726871, 4855767, 135150017, 32572564, 269570072, 11203320, 161114435, 348396463, 210257337, 101751, 10562339, 489423365,
+                147386027, 3050046, 42909834, 322614602, 57486417, 277047, 556218588, 226149873, 121825081, 69683935, 225152880, 13946947, 250088249, 13946947, 250088249
             ]
         else:
             with open(input_file, 'rb') as f:
@@ -183,6 +215,7 @@ def load_users(input_file: str = 'assets/baneks.pkl', should_test: bool = False,
             users = aneks['users']
             del aneks
 
+    os.makedirs(output_dir, exist_ok=True)
     n_chunks = len(users) // chunk_size + 1
     start = time()
     with Pool(n_workers) as pool:
@@ -191,9 +224,9 @@ def load_users(input_file: str = 'assets/baneks.pkl', should_test: bool = False,
             [(i, users[i * chunk_size:(i + 1) * chunk_size]) for i in (reversed(range(n_chunks)) if reverse else range(n_chunks))]
         )
     print(f'Completed in {time() - start} seconds')
-    if not should_cache:
-        return {
-            user: user_info
-            for batch in result
-            for user, user_info in batch.items()
-        }
+    return {
+        user: user_info
+        for batch in result
+        if batch is not None
+        for user, user_info in batch
+    }

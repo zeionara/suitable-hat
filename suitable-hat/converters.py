@@ -24,6 +24,8 @@ LIKED = 'liked'
 REMASTERING_TYPE_ID = 'remastering'
 RESEMBLES = 'resembles'
 ANEK_TYPE_ID = 'anek'
+USER_TYPE_ID = 'user'
+COMMUNITY_TYPE_ID = 'community'
 HAS_TEXT = 'has-text'
 CREATED = 'created'
 PUBLISHED = 'published'
@@ -61,17 +63,17 @@ def line_to_triple(line: str):
 
 def _generate_triples(item: dict, item_id: str):
     yield item_id, HAS_TEXT, item['text']
-    yield item['author'][1:], CREATED, item_id
-    yield communities[item['community']], PUBLISHED, item_id
+    yield f'{USER_TYPE_ID}-{item["author"]}', CREATED, item_id
+    yield f'{COMMUNITY_TYPE_ID}-{item["community"]}', PUBLISHED, item_id
     for like in item['likes']:
-        yield like[1:], LIKED, item_id
+        yield f'{USER_TYPE_ID}-{like}', LIKED, item_id
 
 
 def _write_triple(file, triple):
     file.write(f'{" ".join(triple)}\n')
 
 
-def to_triples(input_file: str = None, output_file: str = None, aneks: dict = None, first_anek_id: int = 0, first_remastering_id: int = 0):
+def to_triples(input_file: str = None, output_file: str = None, aneks: dict = None):
     def append_triple(triple_):
         if output_file is None:
             result.append(triple_)
@@ -82,45 +84,42 @@ def to_triples(input_file: str = None, output_file: str = None, aneks: dict = No
 
     if aneks is None:
         aneks = read_cache(input_file)
-    j = first_remastering_id
     if output_file is None:
         result = []
     else:
         file = open(output_file, 'w')
-    for i, anek in tuple(enumerate(aneks['aneks'], start=first_anek_id)):
-        anek_id = f'{ANEK_TYPE_ID}-{i:06d}'
+    for anek in aneks['aneks']:
+        anek_id = f'{ANEK_TYPE_ID}-{anek["community"]}-{anek["id"]}'
         for triple in _generate_triples(anek, anek_id):
             append_triple(triple)
         for remastering in anek['remasterings']:
-            remastering_id = f'{REMASTERING_TYPE_ID}-{j:06d}'
+            remastering_id = f'{REMASTERING_TYPE_ID}-{anek["community"]}-{remastering["id"]}'
             for triple_ in _generate_triples(remastering, remastering_id):
                 append_triple(triple_)
             append_triple((remastering_id, RESEMBLES, anek_id))
-            j += 1
-    if output_file is None:
-        return result
-    else:
+    if output_file is not None:
         file.close()
+    else:
+        return result
 
 
-def _generate_user_triples(username: str, data: dict):
-    if 'id' in data:
-        yield username, HAS_ID, data['id']
-    if not data['is-closed'] and not data['is-deleted']:
+def _generate_user_triples(id_: int, data: dict):
+    node = f'{USER_TYPE_ID}-{id_}'
+    if data.get('friends', None) is not None:
         for friend in data['friends']:
-            yield username, KNOWS, friend
+            yield node, KNOWS, f'{USER_TYPE_ID}-{friend}'
+    if data.get('communities', None) is not None:
         for community in data['communities']:
-            yield username, FOLLOWS, community
+            yield node, FOLLOWS, f'{COMMUNITY_TYPE_ID}-{community}'
 
 
 def users_to_triples(input_dir: str = None, output_file: str = None, users: dict = None):
     def handle_triples(users_):
-        for username, data in users_.items():
+        for username, data in users_:
             for triple in _generate_user_triples(username, data):
-                if output_file is None:
-                    yield tuple(map(str, triple))
-                else:
+                if output_file is not None:
                     _write_triple(out, map(str, triple))
+                yield tuple(map(str, triple))
 
     assert not (input_dir and users)
 
@@ -128,18 +127,17 @@ def users_to_triples(input_dir: str = None, output_file: str = None, users: dict
         result = tuple(
             handle_triples(users)
         )
-        if output_file is None:
-            return result
-
-    with open(output_file, 'w') as out:
-        for file in filter(
-                lambda file_path_: isfile(file_path_),
-                map(
-                    lambda file_path_: join(input_dir, file_path_),
-                    listdir(input_dir)
-                )
-        ):
-            handle_triples(read_cache(file))
+        return result
+    else:
+        with open(output_file, 'w') as out:
+            for file in filter(
+                    lambda file_path_: isfile(file_path_),
+                    map(
+                        lambda file_path_: join(input_dir, file_path_),
+                        listdir(input_dir)
+                    )
+            ):
+                tuple(handle_triples(read_cache(file)))
 
 
 def is_empty(graph):
