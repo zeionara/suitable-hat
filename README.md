@@ -29,4 +29,4 @@ Collected corpora are available via [this link](https://bit.ly/baneks-corpora) a
 | 00.09.01 | Added users (friends and subscriptions) | 04.11.2020 | binary (users, zipped), text (triples, zipped) |
 | 00.09.02 | Eliminated 'None' users (they were associated with aneks which were created by an owning community, not a particular user) | 04.11.2020 | text (triples, zipped) |
 | 00.09.03 | Converted to ttl format | 04.11.2020 | ttl (zipped) |
-| 00.09.03 | Fixed issue with namespaces | 04.11.2020 | ttl (zipped) |
+| 00.09.04 | Fixed issue with namespaces | 04.11.2020 | ttl (zipped) |
