@@ -151,6 +151,11 @@ def is_empty(graph):
 
 def triples_to_graph(input_file: str = None, output_file: str = 'assets/data.ttl', n_triples_per_graph: int = 10e6, n_triples_per_log_entry: int = 3 * 10e5,
                      triples: iter = None):
+    def bind_namespaces(graph_):
+        graph_.bind('rdf', RDF)
+        graph_.bind('baneks', BANEKS)
+        return graph_
+
     def get_next_triple():
         if input_file is None:
             try:
@@ -163,9 +168,8 @@ def triples_to_graph(input_file: str = None, output_file: str = 'assets/data.ttl
 
     assert not (input_file and triples) and (input_file or triples)
 
-    graph = Graph()
-    graph.bind('rdf', RDF)
-    graph.bind('baneks', BANEKS)
+    graph = bind_namespaces(Graph())
+
     i = 0
     were_prefixes_written = False
 
@@ -177,7 +181,7 @@ def triples_to_graph(input_file: str = None, output_file: str = 'assets/data.ttl
         else:
             were_prefixes_written = True
         write(output_file, serialized_graph, should_append=True)
-        graph = Graph()
+        graph = bind_namespaces(Graph())
 
     try:
         os.remove(output_file)

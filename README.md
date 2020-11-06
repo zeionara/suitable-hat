@@ -18,6 +18,7 @@ python -m suitable-hat tts google --after-file-delay 0 --input-file assets/banek
 ```
 # Corpora
 Collected corpora are available via [this link](https://bit.ly/baneks-corpora) and are presented in the following variations:  
+
 | verison | description | generation start date | formats |
 | --- | --- | --- | --- |
 | 00.07.00 | Includes texts of aneks and remasterings extracted from the main community, as well as lists of people who have liked and authored them as well as complete list of unique users occurred in the data. | 23.10.2020 | yml, binary |
@@ -28,3 +29,4 @@ Collected corpora are available via [this link](https://bit.ly/baneks-corpora) a
 | 00.09.01 | Added users (friends and subscriptions) | 04.11.2020 | binary (users, zipped), text (triples, zipped) |
 | 00.09.02 | Eliminated 'None' users (they were associated with aneks which were created by an owning community, not a particular user) | 04.11.2020 | text (triples, zipped) |
 | 00.09.03 | Converted to ttl format | 04.11.2020 | ttl (zipped) |
+| 00.09.03 | Fixed issue with namespaces | 04.11.2020 | ttl (zipped) |
