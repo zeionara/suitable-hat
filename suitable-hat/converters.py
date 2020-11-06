@@ -62,9 +62,10 @@ def line_to_triple(line: str):
 
 
 def _generate_triples(item: dict, item_id: str):
+    community_id = f'{COMMUNITY_TYPE_ID}-{item["community"]}'
     yield item_id, HAS_TEXT, item['text']
-    yield f'{USER_TYPE_ID}-{item["author"]}', CREATED, item_id
-    yield f'{COMMUNITY_TYPE_ID}-{item["community"]}', PUBLISHED, item_id
+    yield (f'{USER_TYPE_ID}-{item["author"]}' if item['author'] is not None else community_id), CREATED, item_id
+    yield community_id, PUBLISHED, item_id
     for like in item['likes']:
         yield f'{USER_TYPE_ID}-{like}', LIKED, item_id
 
@@ -115,7 +116,7 @@ def _generate_user_triples(id_: int, data: dict):
 
 def users_to_triples(input_dir: str = None, output_file: str = None, users: dict = None):
     def handle_triples(users_):
-        for username, data in users_:
+        for username, data in filter(lambda pair: pair[0] is not None, users_):
             for triple in _generate_user_triples(username, data):
                 if output_file is not None:
                     _write_triple(out, map(str, triple))
@@ -196,10 +197,6 @@ def triples_to_graph(input_file: str = None, output_file: str = 'assets/data.ttl
                 graph.add((node, TYPE, ANEK if head.startswith(ANEK_TYPE_ID) else REMASTERING))
             elif relationship == LIKED:
                 graph.add((URIRef(NODE_.format(id=head)), LIKES_, URIRef(NODE_.format(id=tail))))
-            elif relationship == HAS_ID:
-                node = URIRef(NODE_.format(id=head))
-                graph.add((node, HAS_ID_, Literal(tail)))
-                graph.add((node, TYPE, USER))
             elif relationship == PUBLISHED:
                 node = URIRef(NODE_.format(id=head))
                 graph.add((node, TYPE, COMMUNITY))

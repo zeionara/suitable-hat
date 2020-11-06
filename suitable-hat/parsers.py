@@ -55,7 +55,7 @@ def parse_patch(input_file: str = 'assets/0.8.txt', output_file: str = 'assets/p
 
     # Convert collected data to triples
 
-    anek_triples = to_triples(aneks=aneks, first_anek_id=existing_data_description['n-aneks'], first_remastering_id=existing_data_description['n-remasterings'])
+    anek_triples = to_triples(aneks=aneks)
     user_triples = users_to_triples(users=users)
 
     # Write triples on disk
@@ -171,6 +171,7 @@ def _handle_user(user_id):
 
 def _handle_chunk_of_users(enumerated_chunk, chunk_size: int, output_dir: str, should_cache: bool = True):
     i, chunk = enumerated_chunk
+    chunk = [user for user in chunk if user is not None]
     filename = f'{output_dir}/{i * chunk_size}-{(i + 1) * chunk_size}.pkl'
     if should_cache and isfile(filename):
         print(f'Skipping {filename}...')
