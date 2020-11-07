@@ -3,11 +3,11 @@ import re
 from time import sleep
 from typing import List
 from urllib.error import HTTPError
-from urllib.request import urlopen, Request
 
 from bs4 import BeautifulSoup
 
 from .string import post_process_response
+from ...utils import query as query_
 
 HEADERS = {
     'authority': 'vk.com',
@@ -32,12 +32,7 @@ def query(url: str, as_json: bool = False, as_vk_payload: bool = False):
     while True:
         try:
             result = post_process_response(
-                urlopen(
-                    Request(
-                        url=url,
-                        headers=HEADERS
-                    )
-                ).read().decode(encoding='windows-1251', errors='ignore')
+                query_(url=url, headers=HEADERS)
             )
             break
         except HTTPError as e:

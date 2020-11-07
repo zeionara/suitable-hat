@@ -2,6 +2,7 @@ import click
 
 from .converters import to_triples as to_triples_, users_to_triples as users_to_triples_, triples_to_graph as triples_to_graph_
 from .parsers import parse, merge, load_users as load_users_, parse_patch, parse_all
+from .rdf import query as query_
 from .tts.crt import generate_audio as generate_audio_with_crt
 from .tts.google import generate_audio as generate_audio_with_google
 
@@ -88,6 +89,14 @@ def users_to_triples(input_dir: str = 'assets/users', output_file: str = 'assets
 @click.option('--n-triples-per-log-entry', type=int, default=3 * 10e5)
 def triples_to_graph(input_file: str = 'assets/data.txt', output_file: str = 'assets/data.ttl', n_triples_per_graph: int = 10e6, n_triples_per_log_entry: int = 3 * 10e5):
     triples_to_graph_(input_file=input_file, output_file=output_file, n_triples_per_graph=n_triples_per_graph, n_triples_per_log_entry=n_triples_per_log_entry)
+
+
+@main.command()
+@click.option('--query-path', type=str)
+@click.option('--triples-path', type=str)
+@click.option('--result-path', type=str)
+def query(query_path: str, triples_path: str, result_path: str):
+    query_(query_path=query_path, triples_path=triples_path, result_path=result_path)
 
 
 if __name__ == "__main__":
