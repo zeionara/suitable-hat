@@ -1,0 +1,50 @@
+prefix baneks: <http://baneks.ru#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT distinct ?anek ?initial_user ?community_relevant_user ?friend_relevant_user # ?second_order_friend_relevant_user ?second_order_community_relevant_user ?third_order_community_relevant_user
+WHERE {
+  ?anek rdf:type baneks:Anek .
+  ?anek baneks:hasText ?text .
+  # Found an initial_user
+  ?initial_user baneks:likes ?anek .
+  # Found a community-relevant user
+  ?initial_user baneks:follows ?community .
+  ?community_relevant_user baneks:follows ?community .
+  ?community_relevant_user baneks:likes ?anek .
+  # Find a friend-relevant user
+  ?friend_relevant_user baneks:knows ?initial_user .
+  ?friend_relevant_user baneks:likes ?anek .
+  # Find a second-order friend relevant user
+  # ?second_order_friend_relevant_user baneks:knows ?friend_relevant_user_ .
+  # ?friend_relevant_user_ baneks:knows ?initial_user .
+  # ?second_order_friend_relevant_user baneks:likes ?anek .
+  # Find a second-order community relevant user
+  # ?initial_user baneks:knows ?second_order_community_relevant_user .
+  # ?second_order_community_relevant_user baneks:follows ?community_ .
+  # ?initial_user baneks:follows ?community_ .
+  # ?second_order_community_relevant_user baneks:likes ?anek .
+  # Find a third-order community relevant user
+  # ?initial_user baneks:knows ?second_order_community_relevant_user_ .
+  # ?second_order_community_relevant_user_ baneks:knows ?third_order_community_relevant_user .
+  # ?third_order_community_relevant_user baneks:follows ?community__ .
+  # ?initial_user baneks:follows ?community__ .
+  # ?third_order_community_relevant_user baneks:likes ?anek .
+  filter(
+    strlen(str(?text)) > 30 &&
+    ?community_relevant_user != ?initial_user &&
+    ?friend_relevant_user != ?initial_user # &&
+    # ?friend_relevant_user != ?community_relevant_user &&
+    # ?second_order_friend_relevant_user != ?initial_user # &&
+    # ?second_order_friend_relevant_user != ?community_relevant_user &&
+    # ?second_order_friend_relevant_user != ?friend_relevant_user &&
+    # ?second_order_community_relevant_user != ?initial_user &&
+    # ?second_order_community_relevant_user != ?community_relevant_user &&
+    # ?second_order_community_relevant_user != ?friend_relevant_user &&
+    # ?second_order_community_relevant_user != ?second_order_friend_relevant_user &&
+    # ?third_order_community_relevant_user != ?initial_user # &&
+    # ?third_order_community_relevant_user != ?community_relevant_user &&
+    # ?third_order_community_relevant_user != ?friend_relevant_user &&
+    # ?third_order_community_relevant_user != ?second_order_friend_relevant_user &&
+    # ?third_order_community_relevant_user != ?second_order_community_relevant_user
+  )
+}
+limit 25
