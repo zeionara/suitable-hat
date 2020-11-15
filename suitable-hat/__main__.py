@@ -1,7 +1,8 @@
 import click
 
-from .converters import to_triples as to_triples_, users_to_triples as users_to_triples_
-from .parsing import parse, merge, load_users as load_users_
+from .converters import to_triples as to_triples_, users_to_triples as users_to_triples_, triples_to_graph as triples_to_graph_
+from .parsers import parse, merge, load_users as load_users_, parse_patch, parse_all
+from .rdf import query as query_
 from .tts.crt import generate_audio as generate_audio_with_crt
 from .tts.google import generate_audio as generate_audio_with_google
 
@@ -13,13 +14,24 @@ def main():
 
 @main.command()
 @click.option('--community-id', type=int, default=85443458)
-@click.option('--min-length', type=int, default=25)
 @click.option('--offset', type=int, default=0)
 @click.option('--cache-delay', type=int, default=100)
 @click.option('--cache-path', type=str, default='aneks.pkl')
-@click.option('--remasterings', '-r', is_flag=True)
-def load(community_id: int = 85443458, min_length: int = 25, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl', remasterings: bool = False):
-    parse(community_id=community_id, min_length=min_length, cache_delay=cache_delay, cache_path=cache_path, remasterings=remasterings, offset=offset)
+def load(community_id: int = 85443458, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl'):
+    parse(community_id=community_id, cache_delay=cache_delay, cache_path=cache_path, offset=offset)
+
+
+@main.command()
+@click.option('--output-file', type=str, default='assets/aneks.pkl')
+def load_all(output_file='assets/aneks.pkl'):
+    parse_all(output_file=output_file)
+
+
+@main.command()
+@click.option('--input-file', type=str, default='assets/0.8.txt')
+@click.option('--output-file', type=str, default='assets/patch.ttl')
+def load_patch(input_file: str = 'assets/0.8.txt', output_file: str = 'assets/patch.ttl'):
+    parse_patch(input_file=input_file, output_file=output_file)
 
 
 @main.command()
@@ -47,10 +59,15 @@ def tts(engine: str = 'crt', input_file: str = 'text.txt', output_file: str = 'a
 
 
 @main.command()
-@click.option('--cache-path', type=str, default='assets/baneks.pkl')
-@click.option('--file-path', type=str, default='assets/users.pkl')
-def load_users(cache_path: str = 'assets/baneks.pkl', file_path: str = 'assets/users.pkl'):
-    load_users_(cache_path, file_path)
+@click.option('--input-file', type=str, default='assets/baneks.pkl')
+@click.option('--output-dir', type=str, default='assets/users')
+@click.option('--should-test', is_flag=True)
+@click.option('--reverse', is_flag=True)
+@click.option('--chunk-size', type=int, default=200)
+@click.option('--n-workers', type=int, default=5)
+def load_users(input_file: str = 'assets/baneks.pkl', output_dir: str = 'assets/users', should_test: bool = False, chunk_size: int = 200, reverse: bool = False, n_workers: int = 5):
+    load_users_(input_file, should_test=should_test, output_dir=output_dir, chunk_size=chunk_size, reverse=reverse, n_workers=n_workers)
+
 
 @main.command()
 @click.option('--input-file', type=str, default='assets/baneks.pkl')
@@ -64,6 +81,23 @@ def to_triples(input_file: str = 'assets/baneks.pkl', output_file: str = 'assets
 @click.option('--output-file', type=str, default='assets/triples.txt')
 def users_to_triples(input_dir: str = 'assets/users', output_file: str = 'assets/triples.txt'):
     users_to_triples_(input_dir=input_dir, output_file=output_file)
+
+
+@main.command()
+@click.option('--input-file', type=str, default='assets/data.txt')
+@click.option('--output-file', type=str, default='assets/data.ttl')
+@click.option('--n-triples-per-graph', type=int, default=10e6)
+@click.option('--n-triples-per-log-entry', type=int, default=3 * 10e5)
+def triples_to_graph(input_file: str = 'assets/data.txt', output_file: str = 'assets/data.ttl', n_triples_per_graph: int = 10e6, n_triples_per_log_entry: int = 3 * 10e5):
+    triples_to_graph_(input_file=input_file, output_file=output_file, n_triples_per_graph=n_triples_per_graph, n_triples_per_log_entry=n_triples_per_log_entry)
+
+
+@main.command()
+@click.option('--query-path', type=str)
+@click.option('--triples-path', type=str)
+@click.option('--result-path', type=str)
+def query(query_path: str, triples_path: str, result_path: str):
+    query_(query_path=query_path, triples_path=triples_path, result_path=result_path)
 
 
 if __name__ == "__main__":
