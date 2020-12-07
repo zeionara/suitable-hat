@@ -58,7 +58,7 @@ PREFIX_REGEXP = re.compile('@prefix.+\\.\n')
 
 
 def line_to_triple(line: str):
-    return line[:-1].split(' ', maxsplit=2)
+    return tuple(line[:-1].split(' ', maxsplit=2))
 
 
 def _generate_triples(item: dict, item_id: str):

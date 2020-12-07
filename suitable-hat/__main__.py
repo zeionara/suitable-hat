@@ -95,8 +95,9 @@ def triples_to_graph(input_file: str = 'assets/data.txt', output_file: str = 'as
 @click.option('--query-path', type=str)
 @click.option('--triples-path', type=str)
 @click.option('--result-path', type=str)
-def query(query_path: str, triples_path: str, result_path: str):
-    query_(query_path=query_path, triples_path=triples_path, result_path=result_path)
+@click.option('--texts-path', type=str)
+def query(query_path: str, triples_path: str, result_path: str, texts_path: str):
+    query_(query_path=query_path, triples_path=triples_path, result_path=result_path, texts_path=texts_path)
 
 
 if __name__ == "__main__":
