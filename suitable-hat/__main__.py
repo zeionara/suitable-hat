@@ -46,13 +46,14 @@ def join(cache_dir: str = 'cache', file_path: str = 'aneks.yml'):
 @click.option('--input-file', type=str, default='text.txt')
 @click.option('--output-file', type=str, default='audio.mp3')
 @click.option('--after-chunk-delay', type=int, default=2)
+@click.option('--language', type=str, default='en-US')
 @click.option('--after-file-delay', type=int, default=60)
 @click.option('--max-n-chars', type=int, default=500)
-def tts(engine: str = 'crt', input_file: str = 'text.txt', output_file: str = 'audio.mp3', after_chunk_delay: int = 2, after_file_delay: int = 60, max_n_chars: int = 500):
+def tts(engine: str = 'crt', input_file: str = 'text.txt', output_file: str = 'audio.mp3', after_chunk_delay: int = 2, after_file_delay: int = 60, max_n_chars: int = 500, language: str = 'en-US'):
     if engine == 'crt':
         generate_audio_with_crt(input_file_path=input_file, output_file_path=output_file, after_chunk_delay=after_chunk_delay, after_file_delay=after_file_delay, max_n_chars=max_n_chars)
     elif engine == 'google':
-        generate_audio_with_google(input_file_path=input_file, output_file_path=output_file, after_chunk_delay=after_chunk_delay, after_file_delay=after_file_delay, max_n_chars=max_n_chars)
+        generate_audio_with_google(input_file_path=input_file, output_file_path=output_file, after_chunk_delay=after_chunk_delay, after_file_delay=after_file_delay, max_n_chars=max_n_chars, language=language)
     else:
         raise ValueError(f'Unknown engined identifier {engine}')
 

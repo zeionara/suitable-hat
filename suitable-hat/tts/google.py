@@ -4,7 +4,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from .__main__ import split_text, pre_process, report_error
-from ..utils import read_file
+from ..utils import read_file, read_pdf, preprocess_pdf
 
 HEADERS = {
     'authority': 'translate.google.com',
@@ -21,8 +21,21 @@ HEADERS = {
 }
 
 
-def generate_audio(input_file_path: str, output_file_path: str, language: str = 'ru-RU', after_chunk_delay: int = 1, after_file_delay: int = 0, max_n_chars: int = 100):
-    input_text = read_file(input_file_path)
+def generate_audio(input_file_path: str, output_file_path: str, language: str = 'en-US', after_chunk_delay: int = 1, after_file_delay: int = 0, max_n_chars: int = 100):
+
+    extension = input_file_path.split('.')[-1]
+
+    if extension == 'txt':
+        input_text = read_file(input_file_path)
+    else:
+        input_text = '\n'.join(
+            preprocess_pdf(
+                read_pdf(
+                    input_file_path
+                )
+            )
+        )
+
     combined_text = split_text(input_text, max_length=max_n_chars)
 
     with open(output_file_path, 'wb') as output_file_handler:
@@ -30,7 +43,9 @@ def generate_audio(input_file_path: str, output_file_path: str, language: str = 
         for idx, val in enumerate(combined_text):
             val = pre_process(val)
             mp3url = f"https://translate.google.com/translate_tts?tl={language}&client=tw-ob&q={urllib.parse.quote(val)}"
+            print(f'Querying {mp3url}')
             req = Request(mp3url, None, HEADERS)
+            print('Got response')
             if len(val) > 0:
                 try:
                     response = urlopen(req)
