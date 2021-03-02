@@ -120,6 +120,27 @@ def _handle_post(content, community_ref: str, community_id: int):
     }
 
 
+def get_post_texts(community_id: int, offset: int):
+    response = query(url=f'https://vk.com/wall-{community_id}?own=1&offset={offset}')
+    soup = BeautifulSoup(response, features="html.parser")
+
+    posts_to_handle = soup.find_all('div', {'class': 'post'})
+    if len(posts_to_handle) > 0:
+        with ThreadPool(len(posts_to_handle)) as pool:
+            posts = pool.map(
+                lambda content: next_or_none(
+                    map(
+                        lambda post: post.text,
+                        content.find_all('div', {'class': 'wall_post_text'})
+                    )
+                ),
+                posts_to_handle
+            )
+    else:
+        posts = ()
+    return posts
+
+
 def get_posts(community_id: int, offset: int):
     response = query(url=f'https://vk.com/wall-{community_id}?own=1&offset={offset}')
     soup = BeautifulSoup(response, features="html.parser")

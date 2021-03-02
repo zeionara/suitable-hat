@@ -1,10 +1,11 @@
 import click
 
 from .converters import to_triples as to_triples_, users_to_triples as users_to_triples_, triples_to_graph as triples_to_graph_
-from .parsers import parse, merge, load_users as load_users_, parse_patch, parse_all
+from .parsers import parse, merge, load_users as load_users_, parse_patch, parse_all, parse_posts
 from .rdf import query as query_
 from .tts.crt import generate_audio as generate_audio_with_crt
 from .tts.google import generate_audio as generate_audio_with_google
+from .utils import read_cache, write
 
 
 @click.group()
@@ -19,6 +20,20 @@ def main():
 @click.option('--cache-path', type=str, default='aneks.pkl')
 def load(community_id: int = 85443458, offset: int = 0, cache_delay: int = 100, cache_path='aneks.pkl'):
     parse(community_id=community_id, cache_delay=cache_delay, cache_path=cache_path, offset=offset)
+
+
+@main.command()
+@click.option('--community-id', type=int, default=85443458)
+def load_posts(community_id: int = 85443458):
+    parse_posts(community_id=community_id)
+
+
+@main.command()
+@click.argument('path', type=str)
+def split_posts(path: str):
+    posts = [post for post in read_cache(cache_path=path) if post is not None and len(post) > 100]
+    for i, post in enumerate(posts):
+        write(f'repellent/{i:03d}.txt', post)
 
 
 @main.command()
@@ -53,7 +68,8 @@ def tts(engine: str = 'crt', input_file: str = 'text.txt', output_file: str = 'a
     if engine == 'crt':
         generate_audio_with_crt(input_file_path=input_file, output_file_path=output_file, after_chunk_delay=after_chunk_delay, after_file_delay=after_file_delay, max_n_chars=max_n_chars)
     elif engine == 'google':
-        generate_audio_with_google(input_file_path=input_file, output_file_path=output_file, after_chunk_delay=after_chunk_delay, after_file_delay=after_file_delay, max_n_chars=max_n_chars, language=language)
+        generate_audio_with_google(input_file_path=input_file, output_file_path=output_file, after_chunk_delay=after_chunk_delay, after_file_delay=after_file_delay, max_n_chars=max_n_chars,
+                                   language=language)
     else:
         raise ValueError(f'Unknown engined identifier {engine}')
 

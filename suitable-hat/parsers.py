@@ -11,7 +11,7 @@ from typing import Tuple
 from urllib.error import HTTPError
 
 from .converters import to_triples, users_to_triples, _write_triple, triples_to_graph
-from .parsing.aneks import get_posts
+from .parsing.aneks import get_posts, get_post_texts
 from .parsing.users import get_friends, get_communities
 from .parsing.utils.patching import is_end_of_patch, COMMUNITIES, describe_existing_data
 from .utils import write_cache
@@ -123,6 +123,36 @@ def parse(community_id: int = 45491419, offset: int = 0, cache_delay: int = 100,
     if should_cache:
         write_cache(aneks, cache_path)
     return aneks
+
+
+def parse_posts(community_id: int = 45491419):
+    offset = 0
+    all_posts = []
+    while True:
+        posts = get_post_texts(community_id, offset)
+        offset += len(posts)
+        if len(posts) == 0:
+            break
+        all_posts.extend(posts)
+        print(f'Collected {len(all_posts)} posts')
+    #     for anek in filter(
+    #             lambda anek_: anek_['text'] is not None,
+    #             aneks_['aneks']
+    #     ):
+    #         if anek['id'] not in anek_ids:
+    #             anek_ids.add(anek['id'])
+    #             aneks['aneks'].append(anek)
+    #     aneks['users'] = set(aneks_['users']).union(aneks['users'])
+    #     if should_cache and (offset // cache_delay - (offset - len(aneks_['aneks'])) // cache_delay) > 0:
+    #         write_cache(aneks, cache_path)
+    #     print(aneks_)
+    #     print(f'Handled {offset} (+{len(aneks_["aneks"])}) aneks')
+    #     if should_stop(aneks_):
+    #         break
+    # if should_cache:
+    #     write_cache(aneks, cache_path)
+    write_cache(all_posts, 'repellent.pkl')
+    return all_posts
 
 
 def merge(dir_path: str = None, file_path: str = None, aneks_groups: iter = None):
